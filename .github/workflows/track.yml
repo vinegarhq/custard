@@ -1,0 +1,67 @@
+name: Tracker
+
+on:
+  push:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore Cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            WindowsPlayer
+            WindowsStudio64
+          key: ${{ github.workflow }}
+
+      - name: Update
+        run: |
+          set -e
+          csurl='https://clientsettings.roblox.com/v2/client-version/'
+          for b in WindowsPlayer WindowsStudio64; do
+            mkdir -p "$b"
+            out="$(curl -s "$csurl/$b")"
+            err="${out##*message\":}"
+            [ "$err" = "$out" ] || { echo echo "$b: ${err%%\}*}"; exit 1; }
+            ver="${out##*version\"\:\"}"; ver="${ver%%\"*}"
+            guid="${out##*"$ver"\"\,\"clientVersionUpload\"\:\"}"; guid="${guid%%\"*}"
+            if [ -e "$b/ver" ]; then read -r old_ver < "$b/ver"; else echo "$ver" > "$b/ver"; old_ver="$ver"; fi
+            if [ -e "$b/guid" ]; then read -r old_guid < "$b/guid"; else echo "$guid" > "$b/guid"; old_guid="$guid"; fi
+            echo "$b: GUIDs: $old_guid (cached), $guid (fetched)"
+            [ "$old_cvu" = "$cvu" ] && continue
+            echo "Sending updated webhook message"
+            curl -s -H "Content-Type: application/json" -X POST -d "{\"embeds\": [{\"title\": \"$b@LIVE\", \"description\": \"\`\`\`diff\n- $old_ver ($old_guid)\n+ $ver ($old_guid)\n\`\`\`\"}]}" "$WEBHOOK"
+          done
+        env:
+          WEBHOOK: ${{ vars.DISCORD_WEBHOOK_URL }}
+
+      # github.com/actions/cache/issues/342
+      - name: Delete Previous Cache
+        if: ${{ steps.restore-cache.outputs.cache-hit }}
+        continue-on-error: true
+        run: |
+          gh extension install actions/gh-actions-cache
+          gh actions-cache delete "${{ github.workflow }}" --confirm
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save Cache
+        id: save-cache
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            WindowsPlayer
+            WindowsStudio64
+          key: ${{ github.workflow }}
