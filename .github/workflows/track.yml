@@ -46,7 +46,7 @@ jobs:
             echo "$guid" > "$b/guid"; echo "$ver" > "$b/ver"
           done
         env:
-          WEBHOOK: ${{ vars.DISCORD_WEBHOOK_URL }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
 
       # github.com/actions/cache/issues/342
       - name: Delete Previous Cache
