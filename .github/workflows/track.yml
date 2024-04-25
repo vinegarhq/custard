@@ -40,7 +40,7 @@ jobs:
             if [ -e "$b/ver" ]; then read -r old_ver < "$b/ver"; else echo "$ver" > "$b/ver"; old_ver="$ver"; fi
             if [ -e "$b/guid" ]; then read -r old_guid < "$b/guid"; else echo "$guid" > "$b/guid"; old_guid="$guid"; fi
             echo "$b: GUIDs: $old_guid (cached), $guid (fetched)"
-            [ "$old_guid" = "$guid" ] || continue
+            ! [ "$old_guid" = "$guid" ] || continue
             echo "Sending updated webhook message"
             curl -s -H "Content-Type: application/json" -X POST -d \
             "{\"embeds\":[{\"url\": \"https://wholesale.vinegarhq.org/?guid=$guid&type=$b\",\"title\": \"[New Deployment] $b\",\"description\":\"\`\`\`diff\n- $old_ver ($old_guid)\n+ $ver ($old_guid)\n\`\`\`\",\"footer\":{\"text\": \"VinegarHQ\"}, \"color\": 625103}]}" "$WEBHOOK"
