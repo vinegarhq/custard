@@ -42,7 +42,7 @@ jobs:
             echo "$b: GUIDs: $old_guid (cached), $guid (fetched)"
             # ! [ "$old_guid" = "$guid" ] || continue
             echo "Sending updated webhook message"
-            curl -s -H "Content-Type: application/json" -X POST -d "{\"embeds\": [{\"url\": "https://wholesale.vinegarhq.org/?guid=$guid&type=$b", \"title\": \"$b@LIVE\", \"description\": \"\`\`\`diff\n- $old_ver ($old_guid)\n+ $ver ($old_guid)\n\`\`\`\"}]}" "$WEBHOOK"
+            curl -s -H "Content-Type: application/json" -X POST -d "{\"embeds\": [{\"url\": \"https://wholesale.vinegarhq.org/?guid=$guid&type=$b\", \"title\": \"$b@LIVE\", \"description\": \"\`\`\`diff\n- $old_ver ($old_guid)\n+ $ver ($old_guid)\n\`\`\`\"}]}" "$WEBHOOK"
             echo "$guid" > "$b/guid"; echo "$ver" > "$b/ver"
           done
         env:
