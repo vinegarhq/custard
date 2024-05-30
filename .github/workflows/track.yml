@@ -13,6 +13,7 @@ permissions:
 jobs:
   track:
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,8 +43,9 @@ jobs:
             echo "$b: GUIDs: $old_guid (cached), $guid (fetched)"
             ! [ "$old_guid" = "$guid" ] || continue
             echo "Sending updated webhook message"
-            curl -s -H "Content-Type: application/json" -X POST -d \
+            until curl -s -H "Content-Type: application/json" -X POST -d \
             "{\"embeds\":[{\"url\": \"https://wholesale.vinegarhq.org/?guid=$guid&type=$b\",\"title\": \"[New Deployment] $b\",\"description\":\"\`\`\`diff\n- $old_ver ($old_guid)\n+ $ver ($guid)\n\`\`\`\",\"footer\":{\"text\": \"VinegarHQ\"}, \"color\": 625103}]}" "$WEBHOOK"
+            do echo 'Fetch failed, looping'; sleep 4; done
             echo "$guid" > "$b/guid"; echo "$ver" > "$b/ver"
           done
         env:
