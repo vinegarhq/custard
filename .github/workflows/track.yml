@@ -23,31 +23,48 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            WindowsPlayer
-            WindowsStudio64
+            WindowsPlayer_guid
+            WindowsPlayer_ver
+            WindowsStudio64_guid
+            WindowsStudio64_ver
+            AndroidPlayer_guid
+            AndroidPlayer_ver
           key: ${{ github.workflow }}
 
       - name: Update
         run: |
-          set -e
           csurl='https://clientsettings.roblox.com/v2/client-version/'
+          apkurl='https://web-api-cache.aptoide.com/search?query=roblox'
+          
+          retry() { until "$@"; do sleep 5; done; }
+          send_webhook() { curl -s -H "Content-Type: application/json" -X POST -d "{\"embeds\":[{${guid:+\"url\": \"https://wholesale.vinegarhq.org/?guid=$guid&type=$b\",}${timestamp:+\"timestamp\": \"$timestamp\",}\"title\": \"[New Deployment] $b\",\"description\":\"\`\`\`diff\n${old_ver:+- $old_ver${old_guid:+ ($old_guid)}}\n+ $ver${guid:+ ($guid)}\n\`\`\`\",\"footer\":{\"text\": \"VinegarHQ\"}, \"color\": $1}]}" "$WEBHOOK"; }
+          save() { echo "$ver" > "${b}_ver"; echo "$guid" > "${b}_guid"; }
+          read_var() { [ ! -e "${b}_$1" ] || eval "read -r old_$1 < ${b}_$1"; }
+          
           for b in WindowsPlayer WindowsStudio64; do
-            mkdir -p "$b"
-            out="$(curl -s "$csurl/$b")"
-            err="${out##*message\":}"
-            [ "$err" = "$out" ] || { echo echo "$b: ${err%%\}*}"; exit 1; }
+            out="$(retry curl -sf "$csurl/$b")"; err="${out##*message\":}"
+            [ "$err" = "$out" ] || { echo "$b: ${err%%\}*}" >&2; exit 1; }
             ver="${out##*version\"\:\"}"; ver="${ver%%\"*}"
             guid="${out##*"$ver"\"\,\"clientVersionUpload\"\:\"}"; guid="${guid%%\"*}"
-            if [ -e "$b/ver" ]; then read -r old_ver < "$b/ver"; else echo "$ver" > "$b/ver"; old_ver="$ver"; fi
-            if [ -e "$b/guid" ]; then read -r old_guid < "$b/guid"; else echo "$guid" > "$b/guid"; old_guid="$guid"; fi
-            echo "$b: GUIDs: $old_guid (cached), $guid (fetched)"
+            read_var ver; read_var guid; echo "$b: GUIDs: $old_guid (cached), $guid (fetched)"
             ! [ "$old_guid" = "$guid" ] || continue
-            echo "Sending updated webhook message"
-            until curl -s -H "Content-Type: application/json" -X POST -d \
-            "{\"embeds\":[{\"url\": \"https://wholesale.vinegarhq.org/?guid=$guid&type=$b\",\"title\": \"[New Deployment] $b\",\"description\":\"\`\`\`diff\n- $old_ver ($old_guid)\n+ $ver ($guid)\n\`\`\`\",\"footer\":{\"text\": \"VinegarHQ\"}, \"color\": 625103}]}" "$WEBHOOK"
-            do echo 'Fetch failed, looping'; sleep 4; done
-            echo "$guid" > "$b/guid"; echo "$ver" > "$b/ver"
+            retry send_webhook 625103; save
           done
+          unset ver old_ver guid old_guid
+          
+          b=AndroidPlayer
+          while IFS=: read -r k v; do [ "$v" ] || continue; case "$k" in 
+            package) [ "$v" = com.roblox.client ] && inpkg=1 || unset inpkg ;;
+            updated) [ "$inpkg" ] || continue; y=${v%%\ *}; t=${v##*\ }; timestamp=${y}T${t}.000Z ;;
+            vername) [ "$inpkg" ] || continue; ver="$v" ;;
+            vercode)
+              [ "$inpkg" ] || continue; 
+              read_var ver; read_var guid; guid="$v"; echo "$b: vercodes: $old_ver (cached), $ver (fetched)"
+              [ "$old_ver" = "$ver" ] || { send_webhook 10798649; save; }; break 2
+            ;;
+          esac; done <<-EOF
+            $(retry curl -sf "$apkurl" | tr '{}[],' '\n'| tr -d '"')
+          EOF
         env:
           WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
 
@@ -66,6 +83,10 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: |
-            WindowsPlayer
-            WindowsStudio64
+            WindowsPlayer_guid
+            WindowsPlayer_ver
+            WindowsStudio64_guid
+            WindowsStudio64_ver
+            AndroidPlayer_guid
+            AndroidPlayer_ver
           key: ${{ github.workflow }}
