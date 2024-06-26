@@ -37,7 +37,7 @@ jobs:
           apkurl='https://web-api-cache.aptoide.com/search?query=roblox'
           
           retry() { until "$@"; do sleep 5; done; }
-          send_webhook() { curl -s -H "Content-Type: application/json" -X POST -d "{\"embeds\":[{${guid:+\"url\": \"https://wholesale.vinegarhq.org/?guid=$guid&type=$b\",}${timestamp:+\"timestamp\": \"$timestamp\",}\"title\": \"[New Deployment] $b\",\"description\":\"\`\`\`diff\n${old_ver:+- $old_ver${old_guid:+ ($old_guid)}}\n+ $ver${guid:+ ($guid)}\n\`\`\`\",\"footer\":{\"text\": \"VinegarHQ\"}, \"color\": $1}]}" "$WEBHOOK"; }
+          send_webhook() { curl -s -H "Content-Type: application/json" -X POST -d "{\"embeds\":[{${url:+\"url\": \"$url\",}${timestamp:+\"timestamp\": \"$timestamp\",}\"title\": \"[New Deployment] $b\",\"description\":\"\`\`\`diff\n${old_ver:+- $old_ver${old_guid:+ ($old_guid)}}\n+ $ver${guid:+ ($guid)}\n\`\`\`\",\"footer\":{\"text\": \"VinegarHQ\"}, \"color\": $1}]}" "$WEBHOOK"; }
           save() { echo "$ver" > "${b}_ver"; echo "$guid" > "${b}_guid"; }
           read_var() { [ ! -e "${b}_$1" ] || eval "read -r old_$1 < ${b}_$1"; }
           
@@ -48,9 +48,10 @@ jobs:
             guid="${out##*"$ver"\"\,\"clientVersionUpload\"\:\"}"; guid="${guid%%\"*}"
             read_var ver; read_var guid; echo "$b: GUIDs: $old_guid (cached), $guid (fetched)"
             ! [ "$old_guid" = "$guid" ] || continue
+            url="https://wholesale.vinegarhq.org/?guid=$guid&type=$b"
             retry send_webhook 625103; save
           done
-          unset ver old_ver guid old_guid
+          unset ver old_ver guid old_guid url
           
           b=AndroidPlayer
           while IFS=: read -r k v; do [ "$v" ] || continue; case "$k" in 
