@@ -34,7 +34,7 @@ jobs:
       - name: Update
         run: |
           csurl='https://clientsettings.roblox.com/v2/client-version/'
-          apkurl='https://web-api-cache.aptoide.com/search?query=roblox'
+          apkurl='https://web-api.aptoide.com/search?query=roblox'
           
           retry() { until "$@"; do sleep 5; done; }
           send_webhook() { curl -s -H "Content-Type: application/json" -X POST -d "{\"embeds\":[{${url:+\"url\": \"$url\",}${timestamp:+\"timestamp\": \"$timestamp\",}\"title\": \"[New Deployment] $b\",\"description\":\"\`\`\`diff\n${old_ver:+- $old_ver${old_guid:+ ($old_guid)}}\n+ $ver${guid:+ ($guid)}\n\`\`\`\",\"footer\":{\"text\": \"VinegarHQ\"}, \"color\": $1}]}" "$WEBHOOK"; }
