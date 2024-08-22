@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Restore Cache
+      - name: Pull stored version
         id: restore-cache
         uses: actions/cache/restore@v4
         with:
@@ -31,14 +31,15 @@ jobs:
             AndroidPlayer_ver
           key: ${{ github.workflow }}
 
-      - name: Update
+      - name: Update pulled to upstream version
+        id: vercheck
         run: |
           csurl='https://clientsettings.roblox.com/v2/client-version/'
           apkurl='https://web-api.aptoide.com/search?query=roblox'
           
           retry() { until "$@"; do sleep 5; done; }
           send_webhook() { curl -s -H "Content-Type: application/json" -X POST -d "{\"embeds\":[{${url:+\"url\": \"$url\",}${timestamp:+\"timestamp\": \"$timestamp\",}\"title\": \"[New Deployment] $b\",\"description\":\"\`\`\`diff\n${old_ver:+- $old_ver${old_guid:+ ($old_guid)}}\n+ $ver${guid:+ ($guid)}\n\`\`\`\",\"footer\":{\"text\": \"VinegarHQ\"}, \"color\": $1}]}" "$WEBHOOK"; }
-          save() { echo "$ver" > "${b}_ver"; echo "$guid" > "${b}_guid"; }
+          save() { echo "$ver" > "${b}_ver"; echo "$guid" > "${b}_guid"; echo "::set-output hit=true"; }
           read_var() { [ ! -e "${b}_$1" ] || eval "read -r old_$1 < ${b}_$1"; }
           
           for b in WindowsPlayer WindowsStudio64; do
@@ -70,8 +71,8 @@ jobs:
           WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
 
       # github.com/actions/cache/issues/342
-      - name: Delete Previous Cache
-        if: ${{ steps.restore-cache.outputs.cache-hit }}
+      - name: Delete stored version
+        if: steps.vercheck.outputs.hit == 'true'
         continue-on-error: true
         run: |
           gh extension install actions/gh-actions-cache
@@ -79,7 +80,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Save Cache
+      - name: Upload stored version
+        if: steps.vercheck.outputs.hit == 'true'
         id: save-cache
         uses: actions/cache/save@v4
         with:
