@@ -39,7 +39,7 @@ jobs:
           
           retry() { until "$@"; do sleep 5; done; }
           send_webhook() { curl -s -H "Content-Type: application/json" -X POST -d "{\"embeds\":[{${url:+\"url\": \"$url\",}${timestamp:+\"timestamp\": \"$timestamp\",}\"title\": \"[New Deployment] $b\",\"description\":\"\`\`\`diff\n${old_ver:+- $old_ver${old_guid:+ ($old_guid)}}\n+ $ver${guid:+ ($guid)}\n\`\`\`\",\"footer\":{\"text\": \"VinegarHQ\"}, \"color\": $1}]}" "$WEBHOOK"; }
-          save() { echo "$ver" > "${b}_ver"; echo "$guid" > "${b}_guid"; echo "::set-output hit=true"; }
+          save() { echo "$ver" > "${b}_ver"; echo "$guid" > "${b}_guid"; echo "hit=true" >> $GITHUB_OUTPUT; }
           read_var() { [ ! -e "${b}_$1" ] || eval "read -r old_$1 < ${b}_$1"; }
           
           for b in WindowsPlayer WindowsStudio64; do
